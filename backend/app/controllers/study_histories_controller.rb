@@ -12,6 +12,11 @@ class StudyHistoriesController < ApplicationController
     histories = StudyHistory.all.order(created_at: :desc)
     render json: histories
   end
+  
+  def wrong
+    histories = StudyHistory.where(correct: false).order(created_at: :desc)
+    render json: histories,include: :word
+  end
 
   private 
 
