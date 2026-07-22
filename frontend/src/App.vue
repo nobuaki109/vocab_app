@@ -1,24 +1,84 @@
 <script setup>
-import { ref, onMounted } from "vue";
-import WordList from "./components/WordList.vue";
-import WordForm from "./components/WordForm.vue";
-import WordQuiz from "./components/WordQuiz.vue";
-import Wordwrong from "./components/Wordwrong.vue";
+import { ref, computed, onMounted } from "vue";
+import WordList from "./components/words/WordList.vue";
+import WordForm from "./components/words/WordForm.vue";
+import WordQuiz from "./components/quiz/WordQuiz.vue";
+import Wordwrong from "./components/quiz/Wordwrong.vue";
+import { API_BASE_URL } from "./config/api.js";
 const words = ref([]);
 const english = ref("");
 const japanese = ref("");
 const exampleSentence = ref("");
 const title = ref("単語一覧アプリ");
+const searchKeyword = ref("");
+const isLookingUpWord = ref(false);
 const errors = ref([]);
 const editingWordId = ref(null);
+const activeTab = ref("form");
+const tabs = [
+  { id: "form", label: "登録" },
+  { id: "list", label: "一覧" },
+  { id: "quiz", label: "クイズ" },
+];
+const formErrors = ref({
+  english: "",
+  japanese: "",
+});
 onMounted(async () => {
-  const response = await fetch("http://localhost:3000/words");
+  const response = await fetch(`${API_BASE_URL}/words`);
   const data = await response.json();
   words.value = data;
 });
+
+const lookupWord = async () => {
+  errors.value = [];
+  formErrors.value = { english: "", japanese: "" };
+
+  if (!english.value.trim()) {
+    formErrors.value.english = "検索する英単語を入力して下さい。";
+    return;
+  }
+
+  isLookingUpWord.value = true;
+  const response = await fetch(
+    `${API_BASE_URL}/words/words/lookup?english=${encodeURIComponent(english.value)}`,
+  );
+
+  isLookingUpWord.value = false;
+  if (!response.ok) {
+    const errorData = await response.json();
+    errors.value = errorData.errors || ["単語情報の取得に失敗しました"];
+    return;
+  }
+
+  const data = await response.json();
+  english.value = data.english;
+  japanese.value = data.japanese;
+  exampleSentence.value = data.example_sentence;
+};
+
+const validateWordForm = () => {
+  formErrors.value = {
+    english: "",
+    japanese: "",
+  };
+  if (!english.value.trim()) {
+    formErrors.value.english = "英単語を入力して下さい";
+  }
+  if (!japanese.value.trim()) {
+    formErrors.value.japanese = "日本語を入力して下さい";
+  }
+  return !formErrors.value.english && !formErrors.value.japanese;
+};
+
 const createWord = async () => {
   errors.value = [];
-  const response = await fetch("http://localhost:3000/words", {
+
+  if (!validateWordForm()) {
+    return;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/words`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -39,12 +99,15 @@ const createWord = async () => {
   const result = await response.json();
   alert("送信完了！");
   words.value.unshift(result);
-  english.value = "";
-  japanese.value = "";
-  exampleSentence.value = "";
+  resetForm();
+  activeTab.value = "list";
 };
 const destroyWord = async (id) => {
-  const response = await fetch(`http://localhost:3000/words/${id}`, {
+  const confirmed = confirm("この単語を削除しますか？");
+  if (!confirmed) {
+    return;
+  }
+  const response = await fetch(`${API_BASE_URL}/words/${id}`, {
     method: "DELETE",
   });
   if (!response.ok) {
@@ -58,25 +121,27 @@ const startEdit = (word) => {
   english.value = word.english;
   japanese.value = word.japanese;
   exampleSentence.value = word.example_sentence;
+  activeTab.value = "form";
 };
 const updateWord = async () => {
   errors.value = [];
-  const response = await fetch(
-    `http://localhost:3000/words/${editingWordId.value}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        word: {
-          english: english.value,
-          japanese: japanese.value,
-          example_sentence: exampleSentence.value,
-        },
-      }),
+
+  if (!validateWordForm()) {
+    return;
+  }
+  const response = await fetch(`${API_BASE_URL}/words/${editingWordId.value}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({
+      word: {
+        english: english.value,
+        japanese: japanese.value,
+        example_sentence: exampleSentence.value,
+      },
+    }),
+  });
   if (!response.ok) {
     const errorData = await response.json();
     errors.value = errorData.errors;
@@ -89,10 +154,36 @@ const updateWord = async () => {
     }
     return word;
   });
+  resetForm();
+  activeTab.value = "list";
+};
+const filteredWords = computed(() => {
+  const keyword = searchKeyword.value.trim().toLowerCase();
+  if (!keyword) {
+    return words.value;
+  }
+
+  return words.value.filter((word) => {
+    return (
+      word.english.toLowerCase().includes(keyword) ||
+      word.japanese.toLowerCase().includes(keyword)
+    );
+  });
+});
+
+const resetForm = () => {
   editingWordId.value = null;
   english.value = "";
   japanese.value = "";
   exampleSentence.value = "";
+  errors.value = [];
+  formErrors.value = {
+    english: "",
+    japanese: "",
+  };
+};
+const cancelEdit = () => {
+  resetForm();
 };
 </script>
 <template>
@@ -110,6 +201,17 @@ const updateWord = async () => {
         <span class="summary-label">登録単語</span>
       </div>
     </section>
+    <nav class="tabs">
+      <button
+        v-for="tab in tabs"
+        :key="tab.id"
+        class="tab-button"
+        :class="{ active: activeTab === tab.id }"
+        @click="activeTab = tab.id"
+      >
+        {{ tab.label }}
+      </button>
+    </nav>
 
     <ul v-if="errors.length > 0" class="error-list">
       <li v-for="error in errors" :key="error">
@@ -120,24 +222,33 @@ const updateWord = async () => {
     <section class="workspace">
       <div class="main-column">
         <WordForm
+          v-if="activeTab === 'form'"
           :english="english"
           :japanese="japanese"
           :example-sentence="exampleSentence"
           :is-editing="!!editingWordId"
+          :form-errors="formErrors"
+          :is-looking-up-word="isLookingUpWord"
           @update:english="english = $event"
           @update:japanese="japanese = $event"
           @update:example-sentence="exampleSentence = $event"
           @submit-word="editingWordId ? updateWord() : createWord()"
+          @cancel-edit="cancelEdit"
+          @reset-form="resetForm"
+          @lookup-word="lookupWord"
         />
         <WordList
-          :words="words"
+          v-if="activeTab === 'list'"
+          :words="filteredWords"
+          :search-keyword="searchKeyword"
+          @update:search-keyword="searchKeyword = $event"
           @delete-word="destroyWord"
           @edit-word="startEdit"
         />
       </div>
       <aside class="side-column">
-        <WordQuiz />
-        <Wordwrong />
+        <WordQuiz v-if="activeTab === 'quiz'" />
+        <Wordwrong v-if="activeTab === 'quiz'" />
       </aside>
     </section>
   </main>
@@ -148,7 +259,12 @@ const updateWord = async () => {
   color: #17212b;
   background: #f4f7f5;
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
     sans-serif;
   font-synthesis: none;
   line-height: 1.5;
@@ -165,8 +281,7 @@ body {
   min-height: 100vh;
   background:
     linear-gradient(135deg, rgba(38, 121, 109, 0.08), transparent 38%),
-    linear-gradient(315deg, rgba(211, 85, 62, 0.09), transparent 34%),
-    #f4f7f5;
+    linear-gradient(315deg, rgba(211, 85, 62, 0.09), transparent 34%), #f4f7f5;
 }
 
 button,
@@ -372,5 +487,34 @@ h1 {
   .summary {
     width: 100%;
   }
+}
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 6px;
+  border: 1px solid #dbe5df;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.tab-button {
+  flex: 1;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 6px;
+  color: #59666f;
+  background: transparent;
+  font-weight: 700;
+}
+
+.tab-button.active {
+  color: #ffffff;
+  background: #26796d;
+}
+
+.workspace {
+  display: block;
+  margin-top: 20px;
 }
 </style>

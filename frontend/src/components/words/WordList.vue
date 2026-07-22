@@ -1,13 +1,21 @@
 <script setup>
 defineProps({
   words: Array,
+  searchKeyword: String,
 });
-const emit = defineEmits(["delete-word", "edit-word"]);
+const emit = defineEmits(["delete-word", "edit-word", "update:search-keyword"]);
 </script>
 
 <template>
   <section class="panel">
     <div class="panel-header">
+      <label class="search-firld">
+        <input
+          :value="searchKeyword"
+          @input="emit('update:search-keyword', $event.target.value)"
+          placeholder="英単語・日本語訳で検索"
+        />
+      </label>
       <div>
         <h2 class="panel-title">単語一覧</h2>
         <p class="panel-subtitle">登録した単語を確認、編集できます。</p>

@@ -2,7 +2,7 @@
 import { ref } from "vue";
 const wrongHistories = ref([]);
 const fetchWrongHistories = async () => {
-  const response = await fetch("http://localhost:3000/study_histories/wrong");
+  const response = await fetch(`${API_BASE_URL}/study_histories/wrong`);
   const data = await response.json();
   wrongHistories.value = data;
 };
@@ -25,7 +25,11 @@ const fetchWrongHistories = async () => {
     </p>
 
     <ul v-else class="wrong-list">
-      <li v-for="history in wrongHistories" :key="history.id" class="wrong-item">
+      <li
+        v-for="history in wrongHistories"
+        :key="history.id"
+        class="wrong-item"
+      >
         <span class="wrong-english">{{ history.word?.english }}</span>
         <span class="wrong-japanese">{{ history.word?.japanese }}</span>
       </li>

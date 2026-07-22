@@ -10,6 +10,8 @@ Rails.application.routes.draw do
   resources :study_histories, only: [:index, :create] do
     get :wrong, on: :collection
   end
+
+  get "words/lookup", to: "words#lookup"
   # Defines the root path route ("/")
   # root "posts#index"
 end
