@@ -14,4 +14,6 @@ Rails.application.routes.draw do
   get "words/lookup", to: "words#lookup"
   # Defines the root path route ("/")
   # root "posts#index"
+
+  get "dashboard", to: "dashboard#show"
 end

@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import QuizSettings from "./QuizSettings.vue";
 import { API_BASE_URL } from "../../config/api.js";
 import QuizQuestion from "./QuizQuestion.vue";
@@ -13,6 +13,7 @@ const hasAnswered = ref(false);
 const isSubmitting = ref(false);
 const isLoadingQuiz = ref(false);
 const quizError = ref("");
+const quizDirection = ref("en_to_ja");
 
 const fetchQuiz = async () => {
   if (isLoadingQuiz.value || isSubmitting.value) {
@@ -61,8 +62,12 @@ const checkanswer = async () => {
     quizResult.value = "回答を入力してください";
     return;
   }
+  const normalizeAnswer = (value) => {
+    return value.trim().toLowerCase().replace(/\s+/g, " ");
+  };
 
-  const isCorrect = answer.value === quizWord.value.japanese;
+  const isCorrect =
+    normalizeAnswer(answer.value) === normalizeAnswer(quizWord.value.japanese);
   isSubmitting.value = true;
 
   try {
@@ -93,6 +98,29 @@ const checkanswer = async () => {
     isSubmitting.value = false;
   }
 };
+
+const questionText = computed(() => {
+  if (!quizWord.value) {
+    return "";
+  }
+  return quizDirection.value === "en_to_ja"
+    ? quizWord.value.english
+    : quizWord.value.japanese;
+});
+const answerPlaceholder = computed(() => {
+  return quizDirection.value === "en_to_ja" ? "日本語を入力" : "英語を入力";
+});
+const playAudio = (audioUrl) => {
+  if (!audioUrl) {
+    return;
+  }
+  try {
+    const audio = new Audio(audioUrl);
+    audio.play();
+  } catch {
+    alert("音声を再生できませんでした。");
+  }
+};
 </script>
 <template>
   <section class="panel quiz-panel">
@@ -105,6 +133,7 @@ const checkanswer = async () => {
 
     <QuizSettings
       v-model:quiz-mode="quizMode"
+      v-model:quiz-direction="quizDirection"
       :disabled="isLoadingQuiz || isSubmitting"
     />
     <QuizQuestion
@@ -113,15 +142,26 @@ const checkanswer = async () => {
       :disabled="isLoadingQuiz || isSubmitting"
       :is-submitting="isSubmitting"
       :is-loading-quiz="isLoadingQuiz"
+      :quiz-error="quizError"
+      :question-text="questionText"
+      :answer-placeholder="answerPlaceholder"
       @fetch-quiz="fetchQuiz"
       @check-answer="checkanswer"
     />
+    <button
+      v-if="quizWord?.audio_url"
+      class="button secondary"
+      type="button"
+      @click="playAudio(quizWord.audio_url)"
+    >
+      🔊 発音
+    </button>
     <QuizResult
       :quiz-word="quizWord"
       :quiz-result="quizResult"
       :has-answered="hasAnswered"
       :is-loading-quiz="isLoadingQuiz"
-      @next-question="fetchQuiz"
+      @fetch-quiz="fetchQuiz"
     />
   </section>
 </template>
@@ -129,67 +169,5 @@ const checkanswer = async () => {
 <style scoped>
 .quiz-panel {
   overflow: hidden;
-}
-
-.quiz-card {
-  display: grid;
-  gap: 12px;
-  margin-top: 16px;
-  padding: 18px;
-  border: 1px solid #d7e7e3;
-  border-radius: 8px;
-  background: #f2faf8;
-}
-
-.quiz-label {
-  margin: 0;
-  color: #66747c;
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.quiz-word {
-  margin: 0;
-  color: #17212b;
-  font-size: 2rem;
-  font-weight: 850;
-  line-height: 1.1;
-  overflow-wrap: anywhere;
-}
-
-.answer-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-}
-
-input {
-  width: 100%;
-  min-height: 42px;
-  padding: 0 12px;
-  border: 1px solid #cbd8d2;
-  border-radius: 8px;
-  color: #17212b;
-  background: #ffffff;
-}
-
-.quiz-result {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: #9b3527;
-  background: #fff2ef;
-  font-weight: 800;
-}
-
-.quiz-result.correct {
-  color: #236f52;
-  background: #e9f7ef;
-}
-
-@media (max-width: 520px) {
-  .answer-row {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

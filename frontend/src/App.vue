@@ -9,6 +9,8 @@ const words = ref([]);
 const english = ref("");
 const japanese = ref("");
 const exampleSentence = ref("");
+const phonetic = ref("");
+const audioUrl = ref("");
 const title = ref("単語一覧アプリ");
 const searchKeyword = ref("");
 const isLookingUpWord = ref(false);
@@ -41,7 +43,7 @@ const lookupWord = async () => {
 
   isLookingUpWord.value = true;
   const response = await fetch(
-    `${API_BASE_URL}/words/words/lookup?english=${encodeURIComponent(english.value)}`,
+    `${API_BASE_URL}/words/lookup?english=${encodeURIComponent(english.value)}`,
   );
 
   isLookingUpWord.value = false;
@@ -55,6 +57,8 @@ const lookupWord = async () => {
   english.value = data.english;
   japanese.value = data.japanese;
   exampleSentence.value = data.example_sentence;
+  phonetic.value = data.phonetic;
+  audioUrl.value = data.audio_url;
 };
 
 const validateWordForm = () => {
@@ -88,6 +92,8 @@ const createWord = async () => {
         english: english.value,
         japanese: japanese.value,
         example_sentence: exampleSentence.value,
+        phonetic: phonetic.value,
+        audio_url: audioUrl.value,
       },
     }),
   });
@@ -122,6 +128,8 @@ const startEdit = (word) => {
   japanese.value = word.japanese;
   exampleSentence.value = word.example_sentence;
   activeTab.value = "form";
+  phonetic.value = word.phonetic || "";
+  audioUrl.value = word.audio_url || "";
 };
 const updateWord = async () => {
   errors.value = [];
@@ -139,6 +147,8 @@ const updateWord = async () => {
         english: english.value,
         japanese: japanese.value,
         example_sentence: exampleSentence.value,
+        phonetic: phonetic.value,
+        audio_url: audioUrl.value,
       },
     }),
   });
@@ -176,6 +186,8 @@ const resetForm = () => {
   english.value = "";
   japanese.value = "";
   exampleSentence.value = "";
+  phonetic.value = "";
+  audioUrl.value = "";
   errors.value = [];
   formErrors.value = {
     english: "",
@@ -188,39 +200,36 @@ const cancelEdit = () => {
 </script>
 <template>
   <main class="app-shell">
-    <section class="hero">
-      <div>
+    <!-- PC用サイドバー -->
+    <aside class="app-sidebar">
+      <div class="sidebar-brand">
         <p class="eyebrow">Vocabulary Notebook</p>
         <h1>{{ title }}</h1>
-        <p class="lead">
-          登録、復習、間違えた単語の確認までをひとつの画面で進められます。
-        </p>
       </div>
       <div class="summary">
         <span class="summary-number">{{ words.length }}</span>
         <span class="summary-label">登録単語</span>
       </div>
-    </section>
-    <nav class="tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        class="tab-button"
-        :class="{ active: activeTab === tab.id }"
-        @click="activeTab = tab.id"
-      >
-        {{ tab.label }}
-      </button>
-    </nav>
+      <nav class="sidebar-nav" aria-label="メインナビゲーション">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="nav-button"
+          :class="{ active: activeTab === tab.id }"
+          @click="activeTab = tab.id"
+        >
+          {{ tab.label }}
+        </button>
+      </nav>
+    </aside>
 
-    <ul v-if="errors.length > 0" class="error-list">
-      <li v-for="error in errors" :key="error">
-        {{ error }}
-      </li>
-    </ul>
-
-    <section class="workspace">
-      <div class="main-column">
+    <div class="app-main">
+      <ul v-if="errors.length > 0" class="error-list">
+        <li v-for="error in errors" :key="error">
+          {{ error }}
+        </li>
+      </ul>
+      <section class="workspace">
         <WordForm
           v-if="activeTab === 'form'"
           :english="english"
@@ -229,6 +238,8 @@ const cancelEdit = () => {
           :is-editing="!!editingWordId"
           :form-errors="formErrors"
           :is-looking-up-word="isLookingUpWord"
+          :phonetic="phonetic"
+          :audio-url="audioUrl"
           @update:english="english = $event"
           @update:japanese="japanese = $event"
           @update:example-sentence="exampleSentence = $event"
@@ -245,19 +256,19 @@ const cancelEdit = () => {
           @delete-word="destroyWord"
           @edit-word="startEdit"
         />
-      </div>
-      <aside class="side-column">
-        <WordQuiz v-if="activeTab === 'quiz'" />
-        <Wordwrong v-if="activeTab === 'quiz'" />
-      </aside>
-    </section>
+        <div v-if="activeTab === 'quiz'" class="quiz-stack">
+          <WordQuiz />
+          <Wordwrong />
+        </div>
+      </section>
+    </div>
   </main>
 </template>
 
 <style>
 :root {
-  color: #17212b;
-  background: #f4f7f5;
+  color: #37352f;
+  background: #ffffff;
   font-family:
     Inter,
     ui-sans-serif,
@@ -267,8 +278,21 @@ const cancelEdit = () => {
     "Segoe UI",
     sans-serif;
   font-synthesis: none;
-  line-height: 1.5;
+  line-height: 1.55;
   text-rendering: optimizeLegibility;
+  --color-text: #37352f;
+  --color-muted: #787774;
+  --color-faint: #9b9a97;
+  --color-canvas: #ffffff;
+  --color-sidebar: #f7f7f5;
+  --color-hover: #efefed;
+  --color-active: #e8e8e5;
+  --color-border: #e9e9e7;
+  --color-border-strong: #d3d3d0;
+  --color-danger: #d44c47;
+  --color-danger-bg: #fdebec;
+  --color-success: #0f7b6c;
+  --color-success-bg: #dbeddb;
 }
 
 * {
@@ -279,14 +303,14 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    linear-gradient(135deg, rgba(38, 121, 109, 0.08), transparent 38%),
-    linear-gradient(315deg, rgba(211, 85, 62, 0.09), transparent 34%), #f4f7f5;
+  color: var(--color-text);
+  background: var(--color-canvas);
 }
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -297,102 +321,134 @@ button {
 
 button:focus-visible,
 input:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid rgba(38, 121, 109, 0.28);
-  outline-offset: 2px;
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(35, 131, 226, 0.35);
+  outline-offset: 1px;
 }
 
 .app-shell {
-  width: min(1120px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 36px 0 48px;
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  min-height: 100vh;
 }
 
-.hero {
+.app-sidebar {
+  position: sticky;
+  top: 0;
   display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 30px;
-  border: 1px solid #dbe5df;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 18px 50px rgba(36, 52, 45, 0.08);
+  flex-direction: column;
+  align-self: start;
+  width: 248px;
+  height: 100vh;
+  padding: 24px 14px;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-sidebar);
+}
+
+.sidebar-brand {
+  padding: 4px 10px 20px;
 }
 
 .eyebrow {
-  margin: 0 0 8px;
-  color: #26796d;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0;
+  margin: 0 0 6px;
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 h1 {
   margin: 0;
-  font-size: clamp(2rem, 5vw, 3.6rem);
-  line-height: 1.04;
-}
-
-.lead {
-  max-width: 610px;
-  margin: 14px 0 0;
-  color: #59666f;
-  font-size: 1rem;
+  color: var(--color-text);
+  font-size: 1.08rem;
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .summary {
-  display: grid;
-  min-width: 128px;
-  padding: 18px;
-  border-left: 4px solid #d3553e;
-  background: #fff8f5;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 4px 18px;
+  padding: 10px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .summary-number {
-  color: #17212b;
-  font-size: 2.5rem;
-  font-weight: 800;
+  color: var(--color-text);
+  font-size: 1.35rem;
+  font-weight: 650;
   line-height: 1;
 }
 
 .summary-label {
-  margin-top: 4px;
-  color: #7c4b3f;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 2px;
+}
+
+.nav-button {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 5px;
+  color: var(--color-text);
+  background: transparent;
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: 500;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.nav-button:hover {
+  background: var(--color-hover);
+}
+
+.nav-button.active {
+  background: var(--color-active);
+  font-weight: 650;
+}
+
+.app-main {
+  min-width: 0;
+  padding: 52px clamp(32px, 6vw, 88px) 72px;
 }
 
 .error-list {
-  margin: 18px 0 0;
+  width: min(100%, 920px);
+  margin: 0 auto 20px;
   padding: 14px 18px 14px 36px;
-  border: 1px solid #f1b7aa;
-  border-radius: 8px;
-  color: #8e2f22;
-  background: #fff2ef;
+  border: 1px solid #f1c1bf;
+  border-radius: 5px;
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  font-size: 0.9rem;
 }
 
 .workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr);
-  gap: 20px;
-  margin-top: 20px;
+  display: block;
+  width: min(100%, 920px);
+  margin: 0 auto;
 }
 
-.main-column,
-.side-column {
+.quiz-stack {
   display: grid;
   gap: 20px;
-  align-content: start;
 }
 
 .panel {
-  padding: 22px;
-  border: 1px solid #dbe5df;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 12px 30px rgba(36, 52, 45, 0.07);
+  padding: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-canvas);
 }
 
 .panel-header {
@@ -400,19 +456,20 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
 }
 
 .panel-title {
   margin: 0;
-  color: #17212b;
-  font-size: 1.12rem;
-  line-height: 1.3;
+  color: var(--color-text);
+  font-size: 1.25rem;
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .panel-subtitle {
-  margin: 4px 0 0;
-  color: #66747c;
+  margin: 5px 0 0;
+  color: var(--color-muted);
   font-size: 0.9rem;
 }
 
@@ -420,101 +477,53 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
-  padding: 0 16px;
-  border-radius: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--color-text);
+  border-radius: 5px;
   color: #ffffff;
-  background: #26796d;
-  font-weight: 700;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    background-color 0.18s ease;
+  background: var(--color-text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: background-color 120ms ease;
 }
 
 .button:hover {
-  background: #1f675d;
-  box-shadow: 0 10px 20px rgba(38, 121, 109, 0.18);
-  transform: translateY(-1px);
+  background: #2f2d29;
 }
 
 .button.secondary {
-  color: #26796d;
-  border: 1px solid #bfd7d2;
-  background: #eef8f6;
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+  background: var(--color-canvas);
 }
 
 .button.secondary:hover {
-  background: #e1f2ef;
+  background: var(--color-hover);
 }
 
 .button.danger {
-  color: #9b3527;
-  border: 1px solid #efc2b8;
-  background: #fff2ef;
+  color: var(--color-danger);
+  border-color: #f1c1bf;
+  background: var(--color-canvas);
 }
 
 .button.danger:hover {
-  background: #ffe6df;
-  box-shadow: 0 10px 20px rgba(155, 53, 39, 0.12);
+  background: var(--color-danger-bg);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .empty-state {
   margin: 0;
-  padding: 18px;
-  border: 1px dashed #c7d5ce;
-  border-radius: 8px;
-  color: #66747c;
-  background: #f8fbf9;
-}
-
-@media (max-width: 860px) {
-  .app-shell {
-    width: min(100% - 24px, 680px);
-    padding-top: 20px;
-  }
-
-  .hero,
-  .workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .hero {
-    display: grid;
-    padding: 22px;
-  }
-
-  .summary {
-    width: 100%;
-  }
-}
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin-top: 20px;
-  padding: 6px;
-  border: 1px solid #dbe5df;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.tab-button {
-  flex: 1;
-  min-height: 42px;
-  padding: 0 16px;
-  border-radius: 6px;
-  color: #59666f;
-  background: transparent;
-  font-weight: 700;
-}
-
-.tab-button.active {
-  color: #ffffff;
-  background: #26796d;
-}
-
-.workspace {
-  display: block;
-  margin-top: 20px;
+  padding: 16px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 5px;
+  color: var(--color-muted);
+  background: var(--color-sidebar);
+  font-size: 0.9rem;
 }
 </style>

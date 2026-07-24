@@ -44,9 +44,10 @@ const fetchWrongHistories = async () => {
 
 .wrong-list {
   display: grid;
-  gap: 10px;
+  gap: 0;
   margin: 16px 0 0;
   padding: 0;
+  border-top: 1px solid var(--color-border);
   list-style: none;
 }
 
@@ -55,19 +56,18 @@ const fetchWrongHistories = async () => {
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px 14px;
-  padding: 12px 14px;
-  border: 1px solid #ead6d0;
-  border-radius: 8px;
-  background: #fffaf8;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
 }
 
 .wrong-english {
-  color: #17212b;
-  font-weight: 800;
+  color: var(--color-text);
+  font-weight: 650;
 }
 
 .wrong-japanese {
-  color: #9b3527;
-  font-weight: 700;
+  color: var(--color-muted);
+  font-weight: 500;
 }
 </style>

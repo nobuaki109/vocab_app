@@ -1,13 +1,11 @@
 <script setup>
 defineProps({
-  disabled: String,
   isLoadingQuiz: Boolean,
-  quizError: String,
-  quizWord: String,
+  quizWord: Object,
   quizResult: String,
   hasAnswered: Boolean,
 });
-const emit = defineEmits(["fetch-quiz", "check-answer"]);
+const emit = defineEmits(["fetch-quiz"]);
 </script>
 <template>
   <div v-if="quizWord" class="quiz-card">
@@ -28,3 +26,30 @@ const emit = defineEmits(["fetch-quiz", "check-answer"]);
     </button>
   </div>
 </template>
+
+<style scoped>
+.quiz-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: var(--color-canvas);
+}
+
+.quiz-result {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 4px;
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.quiz-result.correct {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+</style>

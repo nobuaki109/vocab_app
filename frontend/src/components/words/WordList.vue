@@ -1,9 +1,22 @@
 <script setup>
+import WordQuiz from "../quiz/WordQuiz.vue";
+
 defineProps({
   words: Array,
   searchKeyword: String,
 });
 const emit = defineEmits(["delete-word", "edit-word", "update:search-keyword"]);
+const playAudio = async (audioUrl) => {
+  if (!audioUrl) {
+    return;
+  }
+  try {
+    const audio = new Audio(audioUrl);
+    await audio.play();
+  } catch {
+    alert("音声を再生できませんでした。");
+  }
+};
 </script>
 
 <template>
@@ -33,11 +46,22 @@ const emit = defineEmits(["delete-word", "edit-word", "update:search-keyword"]);
           <div class="word-main">
             <span class="english">{{ word.english }}</span>
             <span class="japanese">{{ word.japanese }}</span>
+            <span v-if="word.phonetic" class="phonetic">{{
+              word.phonetic
+            }}</span>
           </div>
           <p class="example">{{ word.example_sentence || "例文なし" }}</p>
         </div>
 
         <div class="word-actions">
+          <button
+            v-if="WordQuiz.audio_url"
+            class="button secondary"
+            type="button"
+            @click="playAudio(word.audio_url)"
+          >
+            🔊 発音
+          </button>
           <button class="button secondary" @click="emit('edit-word', word)">
             編集
           </button>
@@ -51,22 +75,50 @@ const emit = defineEmits(["delete-word", "edit-word", "update:search-keyword"]);
 </template>
 
 <style scoped>
+.panel-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.search-firld {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: block;
+}
+
+.search-firld input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 4px;
+  color: var(--color-text);
+  background: var(--color-canvas);
+}
+
+.search-firld input::placeholder {
+  color: var(--color-faint);
+}
+
 .count-badge {
   display: inline-grid;
-  min-width: 36px;
-  height: 36px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
   place-items: center;
-  border-radius: 8px;
-  color: #26796d;
-  background: #e6f4f1;
-  font-weight: 800;
+  border-radius: 4px;
+  color: var(--color-muted);
+  background: var(--color-hover);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .word-list {
   display: grid;
-  gap: 12px;
+  gap: 0;
   margin: 0;
   padding: 0;
+  border-top: 1px solid var(--color-border);
   list-style: none;
 }
 
@@ -75,10 +127,14 @@ const emit = defineEmits(["delete-word", "edit-word", "update:search-keyword"]);
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   align-items: center;
-  padding: 16px;
-  border: 1px solid #e3ebe7;
-  border-radius: 8px;
-  background: #fbfdfc;
+  padding: 15px 8px;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+
+.word-item:hover {
+  background: var(--color-sidebar);
 }
 
 .word-content {
@@ -93,25 +149,32 @@ const emit = defineEmits(["delete-word", "edit-word", "update:search-keyword"]);
 }
 
 .english {
-  color: #17212b;
-  font-size: 1.18rem;
-  font-weight: 800;
+  color: var(--color-text);
+  font-size: 1.05rem;
+  font-weight: 650;
 }
 
 .japanese {
-  color: #26796d;
-  font-weight: 700;
+  color: var(--color-muted);
+  font-size: 0.92rem;
+  font-weight: 500;
 }
 
 .example {
-  margin: 8px 0 0;
-  color: #66747c;
+  margin: 6px 0 0;
+  color: var(--color-muted);
+  font-size: 0.88rem;
   overflow-wrap: anywhere;
 }
 
 .word-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+}
+.phonetic {
+  color: var(--color-muted);
+  font-size: 0.86rem;
+  font-weight: 400;
 }
 
 @media (max-width: 640px) {
@@ -121,7 +184,7 @@ const emit = defineEmits(["delete-word", "edit-word", "update:search-keyword"]);
 
   .word-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
   }
 }
 </style>

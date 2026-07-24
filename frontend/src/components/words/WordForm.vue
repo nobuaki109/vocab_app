@@ -1,8 +1,12 @@
 <script setup>
+import WordQuiz from "../quiz/WordQuiz.vue";
+
 defineProps({
   english: String,
   japanese: String,
   exampleSentence: String,
+  phonetic: String,
+  audioUrl: String,
   isEditing: Boolean,
   formErrors: Object,
   isLookingUpWord: Boolean,
@@ -16,6 +20,18 @@ const emit = defineEmits([
   "reset-form",
   "lookup-word",
 ]);
+const playAudio = async (audioUrl) => {
+  if (!audioUrl) {
+    return;
+  }
+
+  try {
+    const audio = new Audio(audioUrl);
+    await audio.play();
+  } catch {
+    alert("音声を再生できませんでした。");
+  }
+};
 </script>
 
 <template>
@@ -64,6 +80,23 @@ const emit = defineEmits([
           {{ formErrors.japanese }}
         </p>
       </label>
+      <div v-if="phonetic || audioUrl" class="pronunciation-preview">
+        <div>
+          <span class="preview-label">発音</span>
+          <span v-if="phonetic" class="phonetic">
+            {{ phonetic }}
+          </span>
+        </div>
+
+        <button
+          v-if="audioUrl"
+          class="button secondary"
+          type="button"
+          @click="playAudio(audioUrl)"
+        >
+          🔊 音声を確認
+        </button>
+      </div>
       <label class="field field-wide">
         <span>例文</span>
         <textarea
@@ -102,50 +135,95 @@ const emit = defineEmits([
 .word-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 20px;
 }
 
 .field {
   display: grid;
-  gap: 8px;
-  color: #34434a;
-  font-size: 0.9rem;
-  font-weight: 700;
+  gap: 7px;
+  color: var(--color-text);
+  font-size: 0.84rem;
+  font-weight: 600;
 }
 
 .field-wide {
   grid-column: 1 / -1;
 }
+
+.lookup-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
 .field-error {
   margin: 0;
-  color: #9b3527;
-  font-size: 0.84rem;
-  font-weight: 700;
+  color: var(--color-danger);
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 input,
 textarea {
   width: 100%;
-  border: 1px solid #cbd8d2;
-  border-radius: 8px;
-  color: #17212b;
-  background: #fbfdfc;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 4px;
+  color: var(--color-text);
+  background: var(--color-canvas);
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
 }
 
 input {
-  min-height: 46px;
-  padding: 0 14px;
+  min-height: 40px;
+  padding: 0 11px;
 }
 
 textarea {
-  min-height: 96px;
+  min-height: 112px;
   resize: vertical;
-  padding: 12px 14px;
+  padding: 10px 11px;
+}
+
+input:hover,
+textarea:hover {
+  border-color: #b8b8b5;
+}
+
+input:focus,
+textarea:focus {
+  border-color: #9b9a97;
+  box-shadow: 0 0 0 1px #9b9a97;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #9aa6ac;
+  color: var(--color-faint);
+}
+
+.pronunciation-preview {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-sidebar);
+}
+
+.preview-label {
+  margin-right: 10px;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.phonetic {
+  color: var(--color-text);
+  font-size: 1rem;
 }
 
 @media (max-width: 640px) {
@@ -166,10 +244,11 @@ textarea::placeholder {
   grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
+  padding-top: 4px;
 }
 
 .submit-button {
-  min-width: 150px;
+  min-width: 120px;
 }
 </style>
